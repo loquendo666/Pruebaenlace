@@ -165,8 +165,18 @@
       min-width: 120px;
     }
 
+    .btn-descargar {
+      background-color: #4CAF50;
+      color: white;
+    }
+
     .btn-compartir {
       background-color: #2196F3;
+      color: white;
+    }
+
+    .btn-whatsapp {
+      background-color: #25D366;
       color: white;
     }
 
@@ -234,10 +244,12 @@
     <div class="modal-content">
       <img id="imagenGenerada" src="" alt="Comprobante generado">
       <div class="instrucciones">
-        Mantén presionada la imagen para guardarla en tu galería o usa el botón de compartir
+        Mantén presionada la imagen para guardarla en tu galería o usa los botones de abajo
       </div>
       <div class="modal-botones">
-        <button class="modal-btn btn-compartir" onclick="compartirComprobante()">📤 Compartir</button>
+        <button class="modal-btn btn-descargar" onclick="descargarDirecto()">📥 Descargar</button>
+        <button class="modal-btn btn-compartir" onclick="compartirNativo()">📤 Compartir</button>
+        <button class="modal-btn btn-whatsapp" onclick="compartirWhatsApp()">📱 WhatsApp</button>
         <button class="modal-btn btn-cerrar" onclick="cerrarModal()">❌ Cerrar</button>
       </div>
     </div>
@@ -334,21 +346,90 @@
       document.getElementById("modalComprobante").style.display = "none";
     }
 
-    function compartirComprobante() {
-      // Abrir la imagen en nueva pestaña para que el usuario la descargue
-      let nuevaVentana = window.open();
-      nuevaVentana.document.write(`
-        <html>
-          <head><title>Comprobante para Descargar</title></head>
-          <body style="margin:0;padding:20px;text-align:center;font-family:Arial;background:#f5f5f5;">
-            <h3 style="color:#333;">Mantén presionada la imagen para guardarla</h3>
-            <p style="color:#666;margin-bottom:20px;">También puedes hacer clic derecho y seleccionar "Guardar imagen como..."</p>
-            <img src="${imagenBase64}" style="max-width:100%;height:auto;border-radius:10px;box-shadow:0 4px 8px rgba(0,0,0,0.1);" alt="Comprobante">
-            <br><br>
-            <button onclick="window.close()" style="padding:12px 24px;font-size:16px;background:#e6007e;color:white;border:none;border-radius:5px;cursor:pointer;">Cerrar</button>
-          </body>
-        </html>
-      `);
+    function descargarDirecto() {
+      try {
+        // Método 1: Link de descarga tradicional
+        let link = document.createElement("a");
+        link.href = imagenBase64;
+        link.download = `comprobante_nequi_${Date.now()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Método 2: Abrir en nueva pestaña como respaldo
+        setTimeout(() => {
+          window.open(imagenBase64, '_blank');
+        }, 500);
+        
+      } catch (error) {
+        console.error("Error en descarga:", error);
+        // Método 3: Forzar apertura en nueva ventana
+        window.open(imagenBase64, '_blank');
+      }
+    }
+
+    function compartirNativo() {
+      if (navigator.share) {
+        // Convertir base64 a blob
+        fetch(imagenBase64)
+        .then(res => res.blob())
+        .then(blob => {
+          const file = new File([blob], `comprobante_nequi_${Date.now()}.png`, { type: "image/png" });
+          
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            navigator.share({
+              files: [file],
+              title: "Comprobante de Pago Nequi",
+              text: "Comprobante de transferencia"
+            });
+          } else {
+            compartirAlternativo();
+          }
+        })
+        .catch(() => compartirAlternativo());
+      } else {
+        compartirAlternativo();
+      }
+    }
+
+    function compartirAlternativo() {
+      // Crear enlace mailto como alternativa
+      const subject = "Comprobante de Pago Nequi";
+      const body = "Adjunto encontrarás el comprobante de la transferencia.";
+      
+      // Intentar abrir selector de aplicaciones del sistema
+      if (window.Android) {
+        // Si hay interfaz Android disponible
+        window.Android.compartirImagen(imagenBase64);
+      } else {
+        // Alternativa: abrir la imagen en nueva pestaña para que el usuario la comparta manualmente
+        let nuevaVentana = window.open();
+        nuevaVentana.document.write(`
+          <html>
+            <head><title>Comprobante para Compartir</title></head>
+            <body style="margin:0;padding:20px;text-align:center;font-family:Arial;">
+              <h3>Mantén presionada la imagen para guardarla o compartirla</h3>
+              <img src="${imagenBase64}" style="max-width:100%;height:auto;" alt="Comprobante">
+              <br><br>
+              <button onclick="window.close()" style="padding:10px 20px;font-size:16px;background:#e6007e;color:white;border:none;border-radius:5px;">Cerrar</button>
+            </body>
+          </html>
+        `);
+      }
+    }
+
+    function compartirWhatsApp() {
+      // Abrir WhatsApp con mensaje
+      const mensaje = "Te envío el comprobante de la transferencia Nequi";
+      const urlWhatsApp = `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje)}`;
+      
+      // Primero intentar descargar la imagen
+      descargarDirecto();
+      
+      // Luego abrir WhatsApp
+      setTimeout(() => {
+        window.open(urlWhatsApp, '_blank');
+      }, 1000);
     }
 
     // Permitir cerrar modal haciendo clic fuera de la imagen
