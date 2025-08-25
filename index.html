@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editar y Descargar Comprobante</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+    body {
+      font-family: 'Roboto', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      height: 100vh;
+      margin: 0;
+      background-color: #f5f5f5;
+    }
+
+    #introFormulario {
+      background: url('https://i.imgur.com/qythA4Q.jpeg') no-repeat center center;
+      background-size: cover;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .formulario {
+      background: rgba(255, 255, 255, 0.9);
+      padding: 20px;
+      border-radius: 5px;
+      box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+      width: 350px;
+      text-align: center;
+    }
+
+    .formulario input {
+      width: 100%;
+      padding: 8px;
+      margin: 5px 0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+
+    .container {
+      position: relative;
+      width: 360px;
+      height: 740px;
+      display: none;
+      margin: 0 auto;
+    }
+
+    .comprobante {
+      width: 360px;
+      height: 740px;
+      display: block;
+      object-fit: cover;
+    }
+
+    .editable {
+      position: absolute;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #000000;
+      background: transparent;
+      border: none;
+      outline: none;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .nombre { top: 313px; left: 25px; font-size: 14px; font-weight: 400; max-width: 280px; }
+    .valor  { top: 360px; left: 25px; font-size: 14px; font-weight: 400; max-width: 200px; } /* 🔥 corregido */
+    .numero { top: 403px; left: 25px; font-size: 14px; font-weight: 400; max-width: 200px; }
+    .fecha  { top: 445px; left: 27px; font-size: 14px; font-weight: 400; max-width: 280px; }
+
+    .btn {
+      padding: 10px 15px;
+      font-size: 16px;
+      color: white;
+      background-color: #e6007e;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    .etiqueta {
+      font-family: 'Roboto', sans-serif;
+      font-weight: 500;
+      color: #000;
+      font-size: 16px;
+    }
+
+    .error-mensaje {
+      color: #d32f2f;
+      font-size: 14px;
+      margin: 10px 0;
+      min-height: 20px;
+      text-align: center;
+    }
+
+    .botones-container {
+      width: 360px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="introFormulario">
+    <div class="formulario">
+      <h3 class="etiqueta">Generar Comprobante</h3>
+      <input type="text" id="inputNombre" placeholder="Para (Nombre)" class="etiqueta">
+      <input type="text" id="inputValor" placeholder="Valor" class="etiqueta" oninput="formatearValor()">
+      <input type="text" id="inputNumero" placeholder="Número celular" class="etiqueta" maxlength="10" oninput="validarNequi()">
+      <div id="errorMensaje" class="error-mensaje"></div>
+      <button class="btn" onclick="generarComprobante()">Generar</button>
+    </div>
+  </div>
+
+  <div class="container" id="comprobanteContainer">
+    <img src="https://i.imgur.com/UHw1dSu.jpeg" alt="Comprobante" class="comprobante" id="comprobante">
+
+    <span class="editable nombre" id="nombre">Nacira Barros</span>
+    <span class="editable valor" id="valor">$8.000,00</span>
+    <span class="editable numero" id="numero">300 469 7597</span>
+    <span class="editable fecha" id="fecha">20 de agosto de 2025 a las 07:57 a. m.</span>
+  </div>
+
+  <div class="botones-container" id="botonesContainer" style="display: none;">
+    <button class="btn" onclick="descargarImagen()">Descargar Imagen</button>
+    <button class="btn" onclick="compartirComprobante()">Compartir</button>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script>
+    function obtenerFechaActual() {
+      const ahora = new Date();
+      const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+      const dia = ahora.getDate();
+      const mes = meses[ahora.getMonth()];
+      const año = ahora.getFullYear();
+      let horas = ahora.getHours();
+      const minutos = ahora.getMinutes().toString().padStart(2, '0');
+      const ampm = horas >= 12 ? 'p. m.' : 'a. m.';
+      horas = horas % 12; horas = horas ? horas : 12;
+      return `${dia} de ${mes} de ${año} a las ${horas.toString().padStart(2, '0')}:${minutos} ${ampm}`;
+    }
+
+    function formatearValor() {
+      let input = document.getElementById("inputValor");
+      let valor = input.value.replace(/\D/g, '');
+      if (valor === "") { input.value = ""; return; }
+      let numero = parseFloat(valor) / 100;
+      input.value = numero.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function validarNequi() {
+      let input = document.getElementById("inputNumero");
+      input.value = input.value.replace(/\D/g, '').slice(0, 10);
+    }
+
+    function generarComprobante() {
+      let nombre = document.getElementById("inputNombre").value || "Nacira Barros";
+      let valor = document.getElementById("inputValor").value || "8.000,00";
+      let numero = document.getElementById("inputNumero").value;
+      let errorMensaje = document.getElementById("errorMensaje");
+
+      if (numero.length !== 10) {
+        errorMensaje.innerText = "El número de Nequi debe tener exactamente 10 dígitos.";
+        return;
+      }
+      errorMensaje.innerText = "";
+
+      let numeroFormateado = numero.replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3");
+      let fechaActual = obtenerFechaActual();
+
+      document.getElementById("nombre").innerText = nombre;
+      document.getElementById("valor").innerText = "$" + valor;
+      document.getElementById("numero").innerText = numeroFormateado;
+      document.getElementById("fecha").innerText = fechaActual;
+
+      document.getElementById("introFormulario").style.display = "none";
+      document.getElementById("comprobanteContainer").style.display = "block";
+      document.getElementById("botonesContainer").style.display = "block";
+    }
+
+    function descargarImagen() {
+      let container = document.getElementById("comprobanteContainer");
+      html2canvas(container, { scale: 2, useCORS: true, backgroundColor: null, width: 360, height: 740 })
+      .then(canvas => {
+        let link = document.createElement("a");
+        link.href = canvas.toDataURL("image/png");
+        link.download = "comprobante.png";
+        link.click();
+      });
+    }
+
+    function compartirComprobante() {
+      let container = document.getElementById("comprobanteContainer");
+      html2canvas(container, { scale: 2, useCORS: true, backgroundColor: null, width: 360, height: 740 })
+      .then(canvas => {
+        canvas.toBlob(blob => {
+          const file = new File([blob], "comprobante.png", { type: "image/png" });
+
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            navigator.share({ files: [file], title: "Comprobante de Pago" });
+          } else {
+            // Si no soporta compartir → descarga directo sin mostrar alert
+            let link = document.createElement("a");
+            link.href = canvas.toDataURL("image/png");
+            link.download = "comprobante.png";
+            link.click();
+          }
+        }, "image/png");
+      });
+    }
+  </script>
+</body>
+</html>
