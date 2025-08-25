@@ -74,7 +74,7 @@
     }
 
     .nombre { top: 313px; left: 25px; font-size: 14px; font-weight: 400; max-width: 280px; }
-    .valor  { top: 360px; left: 25px; font-size: 14px; font-weight: 400; max-width: 200px; } /* 🔥 corregido */
+    .valor  { top: 360px; left: 25px; font-size: 14px; font-weight: 400; max-width: 200px; }
     .numero { top: 403px; left: 25px; font-size: 14px; font-weight: 400; max-width: 200px; }
     .fecha  { top: 445px; left: 27px; font-size: 14px; font-weight: 400; max-width: 280px; }
 
@@ -88,6 +88,10 @@
       cursor: pointer;
       width: 100%;
       margin-top: 10px;
+    }
+
+    .btn:hover {
+      background-color: #c5006b;
     }
 
     .etiqueta {
@@ -105,9 +109,106 @@
       text-align: center;
     }
 
+    .success-mensaje {
+      color: #2e7d32;
+      font-size: 14px;
+      margin: 10px 0;
+      text-align: center;
+    }
+
     .botones-container {
       width: 360px;
       margin-top: 10px;
+    }
+
+    /* Modal para mostrar la imagen generada */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.9);
+    }
+
+    .modal-content {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100%;
+      padding: 20px;
+    }
+
+    .modal img {
+      max-width: 90%;
+      max-height: 70%;
+      border-radius: 10px;
+    }
+
+    .modal-botones {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .modal-btn {
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      min-width: 120px;
+    }
+
+    .btn-descargar {
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    .btn-compartir {
+      background-color: #2196F3;
+      color: white;
+    }
+
+    .btn-whatsapp {
+      background-color: #25D366;
+      color: white;
+    }
+
+    .btn-cerrar {
+      background-color: #f44336;
+      color: white;
+    }
+
+    .instrucciones {
+      color: white;
+      text-align: center;
+      margin: 15px 0;
+      font-size: 14px;
+      max-width: 300px;
+    }
+
+    /* Estilo para dispositivos móviles */
+    @media (max-width: 480px) {
+      .modal-content {
+        padding: 10px;
+      }
+      
+      .modal img {
+        max-width: 95%;
+        max-height: 60%;
+      }
+      
+      .modal-botones {
+        flex-direction: column;
+        width: 100%;
+        max-width: 250px;
+      }
     }
   </style>
 </head>
@@ -134,12 +235,30 @@
   </div>
 
   <div class="botones-container" id="botonesContainer" style="display: none;">
-    <button class="btn" onclick="descargarImagen()">Descargar Imagen</button>
-    <button class="btn" onclick="compartirComprobante()">Compartir</button>
+    <button class="btn" onclick="procesarComprobante()">Procesar Comprobante</button>
+    <button class="btn" onclick="volverFormulario()">Crear Nuevo</button>
+  </div>
+
+  <!-- Modal para mostrar opciones -->
+  <div id="modalComprobante" class="modal">
+    <div class="modal-content">
+      <img id="imagenGenerada" src="" alt="Comprobante generado">
+      <div class="instrucciones">
+        Mantén presionada la imagen para guardarla en tu galería o usa los botones de abajo
+      </div>
+      <div class="modal-botones">
+        <button class="modal-btn btn-descargar" onclick="descargarDirecto()">📥 Descargar</button>
+        <button class="modal-btn btn-compartir" onclick="compartirNativo()">📤 Compartir</button>
+        <button class="modal-btn btn-whatsapp" onclick="compartirWhatsApp()">📱 WhatsApp</button>
+        <button class="modal-btn btn-cerrar" onclick="cerrarModal()">❌ Cerrar</button>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script>
+    let imagenBase64 = '';
+
     function obtenerFechaActual() {
       const ahora = new Date();
       const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -191,36 +310,139 @@
       document.getElementById("botonesContainer").style.display = "block";
     }
 
-    function descargarImagen() {
+    function volverFormulario() {
+      document.getElementById("introFormulario").style.display = "flex";
+      document.getElementById("comprobanteContainer").style.display = "none";
+      document.getElementById("botonesContainer").style.display = "none";
+      // Limpiar campos
+      document.getElementById("inputNombre").value = "";
+      document.getElementById("inputValor").value = "";
+      document.getElementById("inputNumero").value = "";
+      document.getElementById("errorMensaje").innerText = "";
+    }
+
+    function procesarComprobante() {
       let container = document.getElementById("comprobanteContainer");
-      html2canvas(container, { scale: 2, useCORS: true, backgroundColor: null, width: 360, height: 740 })
-      .then(canvas => {
+      
+      html2canvas(container, { 
+        scale: 2, 
+        useCORS: true, 
+        backgroundColor: null, 
+        width: 360, 
+        height: 740,
+        allowTaint: true,
+        foreignObjectRendering: true
+      }).then(canvas => {
+        imagenBase64 = canvas.toDataURL("image/png", 0.9);
+        document.getElementById("imagenGenerada").src = imagenBase64;
+        document.getElementById("modalComprobante").style.display = "block";
+      }).catch(error => {
+        console.error("Error al generar la imagen:", error);
+        alert("Error al procesar el comprobante. Intenta de nuevo.");
+      });
+    }
+
+    function cerrarModal() {
+      document.getElementById("modalComprobante").style.display = "none";
+    }
+
+    function descargarDirecto() {
+      try {
+        // Método 1: Link de descarga tradicional
         let link = document.createElement("a");
-        link.href = canvas.toDataURL("image/png");
-        link.download = "comprobante.png";
+        link.href = imagenBase64;
+        link.download = `comprobante_nequi_${Date.now()}.png`;
+        document.body.appendChild(link);
         link.click();
-      });
+        document.body.removeChild(link);
+        
+        // Método 2: Abrir en nueva pestaña como respaldo
+        setTimeout(() => {
+          window.open(imagenBase64, '_blank');
+        }, 500);
+        
+      } catch (error) {
+        console.error("Error en descarga:", error);
+        // Método 3: Forzar apertura en nueva ventana
+        window.open(imagenBase64, '_blank');
+      }
     }
 
-    function compartirComprobante() {
-      let container = document.getElementById("comprobanteContainer");
-      html2canvas(container, { scale: 2, useCORS: true, backgroundColor: null, width: 360, height: 740 })
-      .then(canvas => {
-        canvas.toBlob(blob => {
-          const file = new File([blob], "comprobante.png", { type: "image/png" });
-
+    function compartirNativo() {
+      if (navigator.share) {
+        // Convertir base64 a blob
+        fetch(imagenBase64)
+        .then(res => res.blob())
+        .then(blob => {
+          const file = new File([blob], `comprobante_nequi_${Date.now()}.png`, { type: "image/png" });
+          
           if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            navigator.share({ files: [file], title: "Comprobante de Pago" });
+            navigator.share({
+              files: [file],
+              title: "Comprobante de Pago Nequi",
+              text: "Comprobante de transferencia"
+            });
           } else {
-            // Si no soporta compartir → descarga directo sin mostrar alert
-            let link = document.createElement("a");
-            link.href = canvas.toDataURL("image/png");
-            link.download = "comprobante.png";
-            link.click();
+            compartirAlternativo();
           }
-        }, "image/png");
-      });
+        })
+        .catch(() => compartirAlternativo());
+      } else {
+        compartirAlternativo();
+      }
     }
+
+    function compartirAlternativo() {
+      // Crear enlace mailto como alternativa
+      const subject = "Comprobante de Pago Nequi";
+      const body = "Adjunto encontrarás el comprobante de la transferencia.";
+      
+      // Intentar abrir selector de aplicaciones del sistema
+      if (window.Android) {
+        // Si hay interfaz Android disponible
+        window.Android.compartirImagen(imagenBase64);
+      } else {
+        // Alternativa: abrir la imagen en nueva pestaña para que el usuario la comparta manualmente
+        let nuevaVentana = window.open();
+        nuevaVentana.document.write(`
+          <html>
+            <head><title>Comprobante para Compartir</title></head>
+            <body style="margin:0;padding:20px;text-align:center;font-family:Arial;">
+              <h3>Mantén presionada la imagen para guardarla o compartirla</h3>
+              <img src="${imagenBase64}" style="max-width:100%;height:auto;" alt="Comprobante">
+              <br><br>
+              <button onclick="window.close()" style="padding:10px 20px;font-size:16px;background:#e6007e;color:white;border:none;border-radius:5px;">Cerrar</button>
+            </body>
+          </html>
+        `);
+      }
+    }
+
+    function compartirWhatsApp() {
+      // Abrir WhatsApp con mensaje
+      const mensaje = "Te envío el comprobante de la transferencia Nequi";
+      const urlWhatsApp = `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje)}`;
+      
+      // Primero intentar descargar la imagen
+      descargarDirecto();
+      
+      // Luego abrir WhatsApp
+      setTimeout(() => {
+        window.open(urlWhatsApp, '_blank');
+      }, 1000);
+    }
+
+    // Permitir cerrar modal haciendo clic fuera de la imagen
+    document.getElementById("modalComprobante").addEventListener('click', function(e) {
+      if (e.target === this) {
+        cerrarModal();
+      }
+    });
+
+    // Prevenir zoom en iOS
+    document.addEventListener('gesturestart', function (e) {
+      e.preventDefault();
+    });
   </script>
 </body>
 </html>
